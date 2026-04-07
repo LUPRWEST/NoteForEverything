@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧠 Second Brain</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c1a;--panel:#13132a;--card:#1a1a35;--card2:#1f1f3d;
+  --border:#252545;--text:#dde0f5;--muted:#6668a0;
+  --todo:#00c9b1;--wiki:#4d9fff;--idea:#ffd166;--tag:#a29bfe;
+  --soon:#ef476f;--someday:#06b6d4;--done:#444466;
+  --radius:12px;--shadow:0 4px 24px rgba(0,0,0,.5);
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;border:none;background:none;color:inherit}
+input,textarea,select{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;outline:none;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--tag);box-shadow:0 0 0 2px rgba(162,155,254,.2)}
+select option{background:var(--panel)}
+textarea{resize:vertical;min-height:80px}
+.hidden{display:none!important}
+
+/* Header */
+header{height:56px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;z-index:10}
+.logo{font-size:18px;font-weight:700;letter-spacing:-.3px;margin-right:8px}
+.logo span{opacity:.6;font-weight:400;font-size:13px;margin-left:6px}
+.tab-nav{display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px}
+.tab-btn{padding:5px 16px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);transition:all .2s}
+.tab-btn.active{background:var(--card2);color:var(--text);box-shadow:var(--shadow)}
+
+/* Board */
+.board{flex:1;display:flex;gap:0;overflow:hidden}
+.col{flex:1;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
+.col:last-child{border-right:none}
+.col-head{padding:14px 16px 10px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0}
+.col-title{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.col-title h2{font-size:14px;font-weight:600;letter-spacing:.2px}
+.col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.col-count{font-size:11px;color:var(--muted);margin-left:auto}
+.add-btn{width:26px;height:26px;border-radius:6px;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s}
+.add-btn:hover{background:var(--card2);color:var(--text)}
+.col-filters{display:flex;gap:6px}
+.col-filters select{font-size:12px;padding:4px 8px;height:28px}
+.col-body{flex:1;overflow-y:auto;padding:10px 10px 20px}
+.col-body::-webkit-scrollbar{width:4px}
+.col-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* Cards */
+.card{background:var(--card);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;border-left:3px solid transparent;transition:all .2s;position:relative}
+.card:hover{background:var(--card2);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card.todo-card{border-color:var(--todo)}
+.card.wiki-card{border-color:var(--wiki)}
+.card.idea-card{border-color:var(--idea)}
+.card.done-card{opacity:.55;border-color:var(--done)}
+.card-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.card-title{font-size:14px;font-weight:600;line-height:1.4;flex:1;word-break:break-word}
+.card-title.striked{text-decoration:line-through;color:var(--muted)}
+.card-content{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:8px;word-break:break-word;white-space:pre-wrap;max-height:60px;overflow:hidden}
+.card-meta{font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;gap:8px;flex-wrap:wrap}
+.card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.tag-chip{font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(162,155,254,.15);color:var(--tag);border:1px solid rgba(162,155,254,.25)}
+.badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0;letter-spacing:.3px}
+.badge-soon{background:rgba(239,71,111,.2);color:var(--soon)}
+.badge-someday{background:rgba(6,182,212,.15);color:var(--someday)}
+.badge-topic{background:rgba(77,159,255,.15);color:var(--wiki);font-size:11px}
+.badge-source{background:rgba(162,155,254,.15);color:var(--tag);font-size:11px}
+
+/* Checkbox */
+.cb-wrap{display:flex;align-items:flex-start;gap:8px;flex:1}
+.cb{width:16px;height:16px;border-radius:4px;border:2px solid var(--muted);cursor:pointer;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.cb.checked{background:var(--todo);border-color:var(--todo)}
+.cb.checked::after{content:'✓';font-size:10px;color:#000;font-weight:800}
+
+/* Attachments in card */
+.attach-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.attach-thumb{width:80px;height:52px;object-fit:cover;border-radius:6px;cursor:pointer}
+.attach-url{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg);border-radius:6px;cursor:pointer;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none}
+.attach-url img{width:16px;height:16px;object-fit:cover;border-radius:2px;flex-shrink:0}
+
+/* Card actions */
+.card-actions{display:flex;gap:4px;justify-content:flex-end;opacity:0;transition:opacity .2s}
+.card:hover .card-actions{opacity:1}
+.card-actions button{font-size:13px;padding:3px 7px;border-radius:6px;color:var(--muted);transition:all .15s}
+.card-actions button:hover{background:var(--card);color:var(--text)}
+
+/* Linked notes in card */
+.linked-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.linked-chip{font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid var(--border)}
+
+/* Graph tab */
+.graph-wrap{flex:1;display:flex;overflow:hidden}
+.graph-sidebar{width:220px;background:var(--panel);border-right:1px solid var(--border);padding:16px;flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.graph-sidebar h3{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.filter-group{display:flex;flex-direction:column;gap:8px}
+.filter-item{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.filter-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.filter-item input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--tag)}
+#graph-network{flex:1;background:var(--bg)}
+.node-info{background:var(--card);border-radius:var(--radius);padding:12px;font-size:12px;line-height:1.7;border:1px solid var(--border)}
+.node-info .ni-title{font-weight:600;font-size:13px;margin-bottom:4px}
+.ni-type{font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.5px}
+
+/* Legend */
+.legend{display:flex;flex-direction:column;gap:6px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* Graph hint */
+.graph-hint{font-size:11px;color:var(--muted);line-height:1.7;padding:8px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid var(--border)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal{background:var(--panel);border-radius:16px;border:1px solid var(--border);width:100%;max-width:580px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.8)}
+.modal-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-head h2{font-size:16px;font-weight:600}
+.modal-close{font-size:20px;color:var(--muted);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .2s}
+.modal-close:hover{background:var(--card);color:var(--text)}
+.modal-body{padding:16px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;flex:1}
+.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+
+/* Type selector */
+.type-selector{display:flex;gap:6px;background:var(--bg);border-radius:10px;padding:4px}
+.type-btn{flex:1;padding:7px;border-radius:7px;font-size:13px;font-weight:500;color:var(--muted);transition:all .2s;text-align:center}
+.type-btn.active{color:var(--text);box-shadow:var(--shadow)}
+.type-btn[data-t="todo"].active{background:rgba(0,201,177,.2);color:var(--todo)}
+.type-btn[data-t="wiki"].active{background:rgba(77,159,255,.2);color:var(--wiki)}
+.type-btn[data-t="idea"].active{background:rgba(255,209,102,.2);color:var(--idea)}
+
+/* Form groups */
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.form-row{display:flex;gap:8px}
+.form-row>*{flex:1}
+
+/* Radio urgency */
+.urgency-group{display:flex;gap:8px}
+.urgency-opt{flex:1;padding:8px 12px;border-radius:8px;border:2px solid var(--border);cursor:pointer;transition:all .2s;text-align:center;font-size:13px;font-weight:500;color:var(--muted)}
+.urgency-opt:hover{border-color:var(--muted)}
+.urgency-opt.sel-soon{border-color:var(--soon);background:rgba(239,71,111,.1);color:var(--soon)}
+.urgency-opt.sel-someday{border-color:var(--someday);background:rgba(6,182,212,.1);color:var(--someday)}
+
+/* Tag input */
+.tag-input-wrap{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;cursor:text;min-height:42px;align-items:center}
+.tag-input-wrap:focus-within{border-color:var(--tag)}
+.tag-pill{display:flex;align-items:center;gap:4px;font-size:12px;padding:2px 8px 2px 10px;border-radius:20px;background:rgba(162,155,254,.2);color:var(--tag);flex-shrink:0}
+.tag-pill button{font-size:14px;line-height:1;color:var(--tag);opacity:.7;padding:0 1px}
+.tag-pill button:hover{opacity:1}
+.tag-bare{background:none;border:none;color:var(--text);font-size:13px;min-width:80px;flex:1;padding:0;outline:none}
+.tag-suggestions{background:var(--card);border:1px solid var(--border);border-radius:8px;max-height:150px;overflow-y:auto;margin-top:2px}
+.tag-sug-item{padding:8px 12px;font-size:13px;cursor:pointer;transition:background .15s}
+.tag-sug-item:hover{background:var(--card2)}
+
+/* Note link search */
+.link-results{background:var(--card);border:1px solid var(--border);border-radius:8px;max-height:140px;overflow-y:auto;margin-top:4px}
+.link-result-item{padding:8px 12px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s}
+.link-result-item:hover{background:var(--card2)}
+.link-type-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.linked-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.linked-pill{display:flex;align-items:center;gap:5px;font-size:12px;padding:3px 8px 3px 10px;border-radius:20px;background:var(--card2);border:1px solid var(--border)}
+.linked-pill button{font-size:14px;color:var(--muted);padding:0 1px}
+.linked-pill button:hover{color:var(--text)}
+
+/* Attachment area */
+.attach-actions{display:flex;gap:8px}
+.attach-action-btn{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;background:var(--card2)}
+.attach-action-btn:hover{border-color:var(--text);color:var(--text)}
+.url-input-row{display:flex;gap:6px;align-items:center}
+.url-input-row input{flex:1}
+.url-go-btn{flex-shrink:0;padding:8px 14px;background:var(--tag);color:#fff;border-radius:8px;font-size:13px;font-weight:500}
+.url-go-btn:hover{opacity:.85}
+.attach-list{display:flex;flex-direction:column;gap:8px}
+.attach-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--card2);border-radius:8px;border:1px solid var(--border)}
+.attach-item-thumb{width:52px;height:36px;object-fit:cover;border-radius:5px;flex-shrink:0}
+.attach-item-thumb-placeholder{width:52px;height:36px;border-radius:5px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.attach-item-info{flex:1;min-width:0}
+.attach-item-title{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attach-item-url{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attach-remove{color:var(--muted);font-size:16px;flex-shrink:0;transition:color .2s}
+.attach-remove:hover{color:var(--soon)}
+
+/* Buttons */
+.btn{padding:9px 20px;border-radius:9px;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;border:none}
+.btn-primary{background:var(--tag);color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-secondary{background:var(--card2);color:var(--muted);border:1px solid var(--border)}
+.btn-secondary:hover{color:var(--text);border-color:var(--muted)}
+.btn-danger{background:rgba(239,71,111,.15);color:var(--soon);border:1px solid rgba(239,71,111,.3)}
+.btn-danger:hover{background:rgba(239,71,111,.3)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e1e35;border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:10px;font-size:13px;z-index:999;box-shadow:var(--shadow);pointer-events:none;animation:fadeup .3s}
+@keyframes fadeup{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* Tab content */
+.tab-content{flex:1;display:none;overflow:hidden;flex-direction:column}
+.tab-content.board-tab{flex-direction:row}
+.tab-content.active{display:flex}
+.board-wrap{flex:1;display:flex;overflow:hidden}
+
+/* Empty state */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.empty-text{font-size:13px}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🧠 Second Brain <span>로컬 앱</span></div>
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('board')">📋 보드</button>
+    <button class="tab-btn" onclick="switchTab('graph')">🕸 시각화</button>
+  </div>
+</header>
+
+<!-- Board Tab -->
+<div id="tab-board" class="tab-content board-tab active">
+  <!-- TODO Column -->
+  <div class="col">
+    <div class="col-head">
+      <div class="col-title">
+        <div class="col-dot" style="background:var(--todo)"></div>
+        <h2>할 일</h2>
+        <span class="col-count" id="count-todo">0</span>
+        <button class="add-btn" onclick="openModal('todo')">＋</button>
+      </div>
+      <div class="col-filters">
+        <select id="todo-sort" onchange="renderTodos()">
+          <option value="recent">최근 작성</option>
+          <option value="topic">주제별</option>
+          <option value="urgency">기간별</option>
+        </select>
+        <select id="todo-urgency" onchange="renderTodos()">
+          <option value="all">전체</option>
+          <option value="soon">근시일 내</option>
+          <option value="someday">언젠가</option>
+        </select>
+      </div>
+    </div>
+    <div class="col-body" id="list-todo"></div>
+  </div>
+  <!-- WIKI Column -->
+  <div class="col">
+    <div class="col-head">
+      <div class="col-title">
+        <div class="col-dot" style="background:var(--wiki)"></div>
+        <h2>위키</h2>
+        <span class="col-count" id="count-wiki">0</span>
+        <button class="add-btn" onclick="openModal('wiki')">＋</button>
+      </div>
+      <div class="col-filters">
+        <select id="wiki-sort" onchange="renderWikis()">
+          <option value="recent">최근 작성</option>
+          <option value="topic">주제별</option>
+        </select>
+        <select id="wiki-topic-filter" onchange="renderWikis()"><option value="">전체 주제</option></select>
+      </div>
+    </div>
+    <div class="col-body" id="list-wiki"></div>
+  </div>
+  <!-- IDEA Column -->
+  <div class="col">
+    <div class="col-head">
+      <div class="col-title">
+        <div class="col-dot" style="background:var(--idea)"></div>
+        <h2>아이디어/기록</h2>
+        <span class="col-count" id="count-idea">0</span>
+        <button class="add-btn" onclick="openModal('idea')">＋</button>
+      </div>
+      <div class="col-filters">
+        <select id="idea-sort" onchange="renderIdeas()">
+          <option value="recent">최근 작성</option>
+          <option value="topic">주제별</option>
+          <option value="time">시기별</option>
+        </select>
+        <select id="idea-time-filter" onchange="renderIdeas()"><option value="">전체 시기</option></select>
+      </div>
+    </div>
+    <div class="col-body" id="list-idea"></div>
+  </div>
+</div>
+
+<!-- Graph Tab -->
+<div id="tab-graph" class="tab-content">
+  <div class="graph-wrap">
+    <div class="graph-sidebar">
+      <div>
+        <h3>필터</h3>
+        <div class="filter-group" style="margin-top:10px">
+          <label class="filter-item"><input type="checkbox" id="f-todo" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--todo)"></div>할 일</label>
+          <label class="filter-item"><input type="checkbox" id="f-wiki" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--wiki)"></div>위키</label>
+          <label class="filter-item"><input type="checkbox" id="f-idea" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--idea)"></div>아이디어</label>
+          <label class="filter-item"><input type="checkbox" id="f-tag" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--tag)"></div>태그 노드</label>
+        </div>
+      </div>
+      <div>
+        <h3>범례</h3>
+        <div class="legend" style="margin-top:10px">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--todo)"></div>할 일</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--wiki)"></div>위키</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--idea)"></div>아이디어</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--tag)"></div>태그 (2개+ 공유)</div>
+          <div class="legend-item"><div style="width:24px;height:2px;background:rgba(162,155,254,.5)"></div>태그 연결</div>
+          <div class="legend-item"><div style="width:24px;height:3px;background:#fff;opacity:.7"></div>노트 링크</div>
+        </div>
+      </div>
+      <div>
+        <h3>조작법</h3>
+        <div class="graph-hint">
+          <b>태그 클릭</b>: 연결 노트 하이라이트<br>
+          <b>노트 1회 클릭</b>: 연결 태그 하이라이트<br>
+          <b>노트 2회 클릭</b>: 연결 노트 하이라이트<br>
+          <b>빈 곳 클릭</b>: 초기화
+        </div>
+      </div>
+      <div id="node-info-wrap" class="hidden">
+        <h3>선택된 노드</h3>
+        <div class="node-info" id="node-info"></div>
+      </div>
+    </div>
+    <div id="graph-network"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="overlayClick(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2 id="modal-title">새 노트</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="type-selector" id="type-selector">
+        <button class="type-btn" data-t="todo" onclick="setModalType('todo')">📋 할 일</button>
+        <button class="type-btn" data-t="wiki" onclick="setModalType('wiki')">📚 위키</button>
+        <button class="type-btn" data-t="idea" onclick="setModalType('idea')">💡 아이디어</button>
+      </div>
+      <div class="form-group">
+        <div class="form-label">제목 *</div>
+        <input type="text" id="m-title" placeholder="제목을 입력하세요">
+      </div>
+      <div class="form-group">
+        <div class="form-label">내용</div>
+        <textarea id="m-content" placeholder="내용을 입력하세요" style="min-height:100px"></textarea>
+      </div>
+      <!-- Todo fields -->
+      <div id="todo-fields" class="form-group">
+        <div class="form-label">기간</div>
+        <div class="urgency-group">
+          <div class="urgency-opt" id="opt-soon" onclick="selectUrgency('soon')">⚡ 근시일 내</div>
+          <div class="urgency-opt" id="opt-someday" onclick="selectUrgency('someday')">🌿 언젠가</div>
+        </div>
+      </div>
+      <!-- Wiki fields -->
+      <div id="wiki-fields" class="hidden">
+        <div class="form-row">
+          <div class="form-group">
+            <div class="form-label">주제 (카테고리)</div>
+            <input type="text" id="m-topic" placeholder="예: CS, 철학, 영어...">
+          </div>
+          <div class="form-group">
+            <div class="form-label">출처 태그</div>
+            <input type="text" id="m-source" placeholder="예: 학교, 개인, 공부...">
+          </div>
+        </div>
+      </div>
+      <!-- Tags -->
+      <div class="form-group">
+        <div class="form-label">태그</div>
+        <div class="tag-input-wrap" id="tag-input-wrap" onclick="document.getElementById('tag-bare').focus()">
+          <div id="tag-pills"></div>
+          <input class="tag-bare" id="tag-bare" type="text" placeholder="태그 입력 후 Enter">
+        </div>
+        <div id="tag-suggestions" class="tag-suggestions hidden"></div>
+      </div>
+      <!-- Link notes -->
+      <div class="form-group">
+        <div class="form-label">노트 연결</div>
+        <input type="text" id="link-search" placeholder="연결할 노트 검색..." oninput="searchLinkedNotes(this.value)">
+        <div id="link-results" class="link-results hidden"></div>
+        <div id="linked-chips" class="linked-chips"></div>
+      </div>
+      <!-- Attachments -->
+      <div class="form-group">
+        <div class="form-label">첨부 (이미지/링크)</div>
+        <div class="attach-actions">
+          <button class="attach-action-btn" onclick="showUrlInput()">🔗 URL 추가</button>
+          <label class="attach-action-btn">🖼 이미지 업로드<input type="file" id="img-upload" accept="image/*" hidden onchange="handleImageSelect(this)"></label>
+        </div>
+        <div id="url-input-row" class="url-input-row hidden" style="margin-top:8px">
+          <input type="text" id="url-input" placeholder="https://..." onkeydown="if(event.key==='Enter')addUrl()">
+          <button class="url-go-btn" onclick="addUrl()">추가</button>
+        </div>
+        <div id="attach-list" class="attach-list" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger hidden" id="btn-delete" onclick="deleteCurrentNote()">삭제</button>
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveNote()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────
+const S = {
+  notes: [],
+  tags: [],
+  modal: {
+    editing: null,
+    type: 'todo',
+    urgency: 'someday',
+    tags: [],
+    linked: [],       // [{id,title,type}]
+    attachments: [],  // [{id?,type,value,thumbnail,title,file?,isNew}]
+    removedIds: []
+  },
+  graph: {
+    data: null,
+    network: null,
+    clickCount: {},
+    lastClickedId: null
+  }
+};
+
+const TYPE_COLOR = {todo:'#00c9b1', wiki:'#4d9fff', idea:'#ffd166', tag:'#a29bfe'};
+const TYPE_ICON = {todo:'📋', wiki:'📚', idea:'💡'};
+
+// ─── Utils ───────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+async function api(method, url, body){
+  const opts = {method, headers:{}};
+  if(body && !(body instanceof FormData)){
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if(body){
+    opts.body = body;
+  }
+  const r = await fetch(url, opts);
+  return r.json();
+}
+function toast(msg, ms=2000){
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), ms);
+}
+function fmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}).replace(/\. /g,'.').replace(/\.$/,'');
+}
+function fmtMonth(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+// ─── Init ────────────────────────────────────────────────────────
+async function init(){
+  await Promise.all([loadNotes(), loadTags()]);
+}
+
+async function loadNotes(){
+  S.notes = await api('GET','/api/notes');
+  renderBoard();
+  updateWikiTopicFilter();
+  updateIdeaTimeFilter();
+}
+
+async function loadTags(){
+  S.tags = await api('GET','/api/tags');
+}
+
+// ─── Tab switch ──────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(el=>{
+    if(el.textContent.includes(name==='board'?'보드':'시각화')) el.classList.add('active');
+  });
+  if(name==='graph') loadGraph();
+}
+
+// ─── Board render ────────────────────────────────────────────────
+function renderBoard(){
+  renderTodos();
+  renderWikis();
+  renderIdeas();
+}
+
+function renderTodos(){
+  let todos = S.notes.filter(n=>n.type==='todo');
+  const urgFilter = document.getElementById('todo-urgency').value;
+  const sort = document.getElementById('todo-sort').value;
+  if(urgFilter!=='all') todos = todos.filter(n=>n.urgency===urgFilter);
+  if(sort==='urgency') todos.sort((a,b)=> a.urgency===b.urgency ? 0 : a.urgency==='soon'?-1:1);
+  else if(sort==='topic') todos.sort((a,b)=>(a.tags[0]?.name||'').localeCompare(b.tags[0]?.name||''));
+  else todos.sort((a,b)=>b.created_at.localeCompare(a.created_at));
+
+  // Group by urgency if sort=urgency
+  let html = '';
+  if(sort==='urgency'){
+    const soon = todos.filter(t=>t.urgency==='soon');
+    const someday = todos.filter(t=>t.urgency==='someday');
+    if(soon.length) html += `<div style="font-size:11px;font-weight:600;color:var(--soon);padding:4px 4px 2px;letter-spacing:.5px">⚡ 근시일 내</div>`;
+    html += soon.map(makeTodoCard).join('');
+    if(someday.length) html += `<div style="font-size:11px;font-weight:600;color:var(--someday);padding:${soon.length?'12px':'4px'} 4px 2px;letter-spacing:.5px">🌿 언젠가</div>`;
+    html += someday.map(makeTodoCard).join('');
+  } else {
+    html = todos.map(makeTodoCard).join('');
+  }
+  document.getElementById('list-todo').innerHTML = html || emptyState('아직 할 일이 없어요','할 일을 추가해보세요');
+  document.getElementById('count-todo').textContent = todos.length;
+}
+
+function renderWikis(){
+  let wikis = S.notes.filter(n=>n.type==='wiki');
+  const sort = document.getElementById('wiki-sort').value;
+  const topicF = document.getElementById('wiki-topic-filter').value;
+  if(topicF) wikis = wikis.filter(n=>n.topic===topicF);
+  if(sort==='topic') wikis.sort((a,b)=>(a.topic||'').localeCompare(b.topic||''));
+  else wikis.sort((a,b)=>b.created_at.localeCompare(a.created_at));
+
+  // Group by topic if sort=topic
+  let html = '';
+  if(sort==='topic'){
+    const grouped = {};
+    wikis.forEach(w=>{ const k=w.topic||'미분류'; (grouped[k]=grouped[k]||[]).push(w); });
+    for(const [topic, items] of Object.entries(grouped)){
+      html += `<div style="font-size:11px;font-weight:600;color:var(--wiki);padding:4px 4px 2px;letter-spacing:.5px">📁 ${esc(topic)}</div>`;
+      html += items.map(makeWikiCard).join('');
+    }
+  } else {
+    html = wikis.map(makeWikiCard).join('');
+  }
+  document.getElementById('list-wiki').innerHTML = html || emptyState('위키 항목이 없어요','알게 된 것들을 기록해보세요');
+  document.getElementById('count-wiki').textContent = wikis.length;
+}
+
+function renderIdeas(){
+  let ideas = S.notes.filter(n=>n.type==='idea');
+  const sort = document.getElementById('idea-sort').value;
+  const timeF = document.getElementById('idea-time-filter').value;
+  if(timeF) ideas = ideas.filter(n=>fmtMonth(n.created_at)===timeF);
+  if(sort==='topic') ideas.sort((a,b)=>(a.tags[0]?.name||'').localeCompare(b.tags[0]?.name||''));
+  else ideas.sort((a,b)=>b.created_at.localeCompare(a.created_at));
+
+  let html = '';
+  if(sort==='time'){
+    const grouped = {};
+    ideas.forEach(i=>{ const k=fmtMonth(i.created_at); (grouped[k]=grouped[k]||[]).push(i); });
+    for(const [m, items] of Object.entries(grouped).sort((a,b)=>b[0].localeCompare(a[0]))){
+      html += `<div style="font-size:11px;font-weight:600;color:var(--idea);padding:4px 4px 2px;letter-spacing:.5px">📅 ${esc(m)}</div>`;
+      html += items.map(makeIdeaCard).join('');
+    }
+  } else {
+    html = ideas.map(makeIdeaCard).join('');
+  }
+  document.getElementById('list-idea').innerHTML = html || emptyState('아이디어가 없어요','떠오른 생각을 기록해보세요');
+  document.getElementById('count-idea').textContent = ideas.length;
+}
+
+function emptyState(title, sub){
+  return `<div class="empty"><div class="empty-icon">✨</div><div style="font-weight:600;margin-bottom:4px">${title}</div><div class="empty-text">${sub}</div></div>`;
+}
+
+function updateWikiTopicFilter(){
+  const topics = [...new Set(S.notes.filter(n=>n.type==='wiki'&&n.topic).map(n=>n.topic))].sort();
+  const sel = document.getElementById('wiki-topic-filter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체 주제</option>' + topics.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  sel.value = topics.includes(cur)?cur:'';
+}
+
+function updateIdeaTimeFilter(){
+  const months = [...new Set(S.notes.filter(n=>n.type==='idea').map(n=>fmtMonth(n.created_at)))].sort((a,b)=>b.localeCompare(a));
+  const sel = document.getElementById('idea-time-filter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체 시기</option>' + months.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  sel.value = months.includes(cur)?cur:'';
+}
+
+// ─── Card makers ─────────────────────────────────────────────────
+function makeTodoCard(note){
+  const tags = note.tags.map(t=>`<span class="tag-chip">${esc(t.name)}</span>`).join('');
+  const doneClass = note.done ? 'done-card' : '';
+  const cbClass = note.done ? 'checked' : '';
+  const titleClass = note.done ? 'striked' : '';
+  const badge = note.urgency==='soon'
+    ? '<span class="badge badge-soon">근시일</span>'
+    : '<span class="badge badge-someday">언젠가</span>';
+  const attachHtml = makeAttachPreview(note.attachments);
+  const linkedHtml = note.linked_notes.length
+    ? `<div class="linked-row">${note.linked_notes.map(l=>`<span class="linked-chip">${TYPE_ICON[l.type]||''} ${esc(l.title)}</span>`).join('')}</div>`:'';
+  return `<div class="card todo-card ${doneClass}">
+    <div class="card-top">
+      <div class="cb-wrap">
+        <div class="cb ${cbClass}" onclick="toggleTodo('${note.id}')"></div>
+        <div class="card-title ${titleClass}">${esc(note.title)}</div>
+      </div>
+      ${badge}
+    </div>
+    ${note.content?`<div class="card-content">${esc(note.content)}</div>`:''}
+    ${note.tags.length?`<div class="card-tags">${tags}</div>`:''}
+    ${linkedHtml}
+    ${attachHtml}
+    <div class="card-actions">
+      <button onclick="openModal('todo','${note.id}')">✏️ 편집</button>
+    </div>
+  </div>`;
+}
+
+function makeWikiCard(note){
+  const tags = note.tags.map(t=>`<span class="tag-chip">${esc(t.name)}</span>`).join('');
+  const attachHtml = makeAttachPreview(note.attachments);
+  const linkedHtml = note.linked_notes.length
+    ? `<div class="linked-row">${note.linked_notes.map(l=>`<span class="linked-chip">${TYPE_ICON[l.type]||''} ${esc(l.title)}</span>`).join('')}</div>`:'';
+  return `<div class="card wiki-card">
+    <div class="card-top">
+      <div class="card-title">${esc(note.title)}</div>
+    </div>
+    <div class="card-meta">
+      ${note.topic?`<span class="badge badge-topic">📁 ${esc(note.topic)}</span>`:''}
+      ${note.source_tag?`<span class="badge badge-source">🏷 ${esc(note.source_tag)}</span>`:''}
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)">${fmtDate(note.created_at)}</span>
+    </div>
+    ${note.content?`<div class="card-content">${esc(note.content)}</div>`:''}
+    ${note.tags.length?`<div class="card-tags">${tags}</div>`:''}
+    ${linkedHtml}
+    ${attachHtml}
+    <div class="card-actions">
+      <button onclick="openModal('wiki','${note.id}')">✏️ 편집</button>
+    </div>
+  </div>`;
+}
+
+function makeIdeaCard(note){
+  const tags = note.tags.map(t=>`<span class="tag-chip">${esc(t.name)}</span>`).join('');
+  const attachHtml = makeAttachPreview(note.attachments);
+  const linkedHtml = note.linked_notes.length
+    ? `<div class="linked-row">${note.linked_notes.map(l=>`<span class="linked-chip">${TYPE_ICON[l.type]||''} ${esc(l.title)}</span>`).join('')}</div>`:'';
+  return `<div class="card idea-card">
+    <div class="card-top">
+      <div class="card-title">${esc(note.title)}</div>
+      <span style="font-size:11px;color:var(--muted);flex-shrink:0">${fmtDate(note.created_at)}</span>
+    </div>
+    ${note.content?`<div class="card-content">${esc(note.content)}</div>`:''}
+    ${note.tags.length?`<div class="card-tags">${tags}</div>`:''}
+    ${linkedHtml}
+    ${attachHtml}
+    <div class="card-actions">
+      <button onclick="openModal('idea','${note.id}')">✏️ 편집</button>
+    </div>
+  </div>`;
+}
+
+function makeAttachPreview(attachments){
+  if(!attachments||!attachments.length) return '';
+  const items = attachments.map(a=>{
+    if(a.attach_type==='image'){
+      return `<img class="attach-thumb" src="${esc(a.value)}" alt="" onclick="window.open('${esc(a.value)}','_blank')">`;
+    } else {
+      const thumb = a.thumbnail ? `<img src="${esc(a.thumbnail)}" onerror="this.style.display='none'" style="width:16px;height:16px;object-fit:cover;border-radius:2px;flex-shrink:0">` : '🔗';
+      return `<a class="attach-url" href="${esc(a.value)}" target="_blank">${thumb} ${esc(a.title||a.value)}</a>`;
+    }
+  }).join('');
+  return `<div class="attach-row">${items}</div>`;
+}
+
+// ─── Toggle Todo ─────────────────────────────────────────────────
+async function toggleTodo(id){
+  await api('POST',`/api/notes/${id}/toggle`);
+  await loadNotes();
+}
+
+// ─── Modal ───────────────────────────────────────────────────────
+async function openModal(type, noteId=null){
+  const m = S.modal;
+  m.editing = noteId;
+  m.tags = [];
+  m.linked = [];
+  m.attachments = [];
+  m.removedIds = [];
+
+  document.getElementById('m-title').value = '';
+  document.getElementById('m-content').value = '';
+  document.getElementById('m-topic').value = '';
+  document.getElementById('m-source').value = '';
+  document.getElementById('url-input-row').classList.add('hidden');
+  document.getElementById('url-input').value = '';
+
+  if(noteId){
+    const note = await api('GET',`/api/notes/${noteId}`);
+    m.type = note.type;
+    m.urgency = note.urgency || 'someday';
+    m.tags = note.tags.map(t=>t.name);
+    m.linked = note.linked_notes.map(n=>({id:n.id,title:n.title,type:n.type}));
+    m.attachments = note.attachments.map(a=>({...a, isNew:false}));
+    document.getElementById('m-title').value = note.title;
+    document.getElementById('m-content').value = note.content||'';
+    document.getElementById('m-topic').value = note.topic||'';
+    document.getElementById('m-source').value = note.source_tag||'';
+    document.getElementById('modal-title').textContent = '노트 편집';
+    document.getElementById('btn-delete').classList.remove('hidden');
+  } else {
+    m.type = type;
+    m.urgency = 'someday';
+    document.getElementById('modal-title').textContent = '새 노트';
+    document.getElementById('btn-delete').classList.add('hidden');
+  }
+
+  setModalType(m.type);
+  renderModalTags();
+  renderLinkedChips();
+  renderAttachList();
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  document.getElementById('m-title').focus();
+}
+
+function closeModal(){
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+function overlayClick(e){
+  if(e.target.id==='modal-overlay') closeModal();
+}
+
+function setModalType(t){
+  S.modal.type = t;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+  document.getElementById('todo-fields').classList.toggle('hidden', t!=='todo');
+  document.getElementById('wiki-fields').classList.toggle('hidden', t!=='wiki');
+  if(t==='todo') updateUrgencyUI();
+}
+
+function selectUrgency(v){
+  S.modal.urgency = v;
+  updateUrgencyUI();
+}
+
+function updateUrgencyUI(){
+  document.getElementById('opt-soon').className = 'urgency-opt' + (S.modal.urgency==='soon'?' sel-soon':'');
+  document.getElementById('opt-someday').className = 'urgency-opt' + (S.modal.urgency==='someday'?' sel-someday':'');
+}
+
+// ─── Tags ────────────────────────────────────────────────────────
+function renderModalTags(){
+  const pills = S.modal.tags.map((t,i)=>
+    `<span class="tag-pill">${esc(t)}<button onclick="removeTag(${i})">×</button></span>`
+  ).join('');
+  document.getElementById('tag-pills').innerHTML = pills;
+}
+
+function removeTag(i){
+  S.modal.tags.splice(i,1);
+  renderModalTags();
+}
+
+document.getElementById('tag-bare').addEventListener('keydown', function(e){
+  if(e.key==='Enter' || e.key===','){
+    e.preventDefault();
+    const v = this.value.trim().replace(',','');
+    if(v && !S.modal.tags.includes(v)){
+      S.modal.tags.push(v);
+      renderModalTags();
+      loadTags();
+    }
+    this.value = '';
+    document.getElementById('tag-suggestions').classList.add('hidden');
+  } else if(e.key==='Backspace' && !this.value && S.modal.tags.length){
+    S.modal.tags.pop();
+    renderModalTags();
+  }
+});
+
+document.getElementById('tag-bare').addEventListener('input', function(){
+  const v = this.value.toLowerCase();
+  if(!v){ document.getElementById('tag-suggestions').classList.add('hidden'); return; }
+  const matches = S.tags.filter(t=>t.name.toLowerCase().includes(v) && !S.modal.tags.includes(t.name));
+  const sug = document.getElementById('tag-suggestions');
+  if(!matches.length){ sug.classList.add('hidden'); return; }
+  sug.innerHTML = matches.slice(0,8).map(t=>`<div class="tag-sug-item" onclick="pickTag('${esc(t.name)}')">${esc(t.name)}</div>`).join('');
+  sug.classList.remove('hidden');
+});
+
+function pickTag(name){
+  if(!S.modal.tags.includes(name)) S.modal.tags.push(name);
+  renderModalTags();
+  document.getElementById('tag-bare').value = '';
+  document.getElementById('tag-suggestions').classList.add('hidden');
+}
+
+// ─── Note Linking ────────────────────────────────────────────────
+function searchLinkedNotes(q){
+  const results = document.getElementById('link-results');
+  if(!q){ results.classList.add('hidden'); return; }
+  const matches = S.notes.filter(n=>
+    n.id !== S.modal.editing &&
+    n.title.toLowerCase().includes(q.toLowerCase()) &&
+    !S.modal.linked.find(l=>l.id===n.id)
+  ).slice(0,6);
+  if(!matches.length){ results.classList.add('hidden'); return; }
+  results.innerHTML = matches.map(n=>`
+    <div class="link-result-item" onclick="addLinkedNote('${n.id}','${esc(n.title)}','${n.type}')">
+      <div class="link-type-dot" style="background:${TYPE_COLOR[n.type]}"></div>
+      <span>${TYPE_ICON[n.type]} ${esc(n.title)}</span>
+    </div>`).join('');
+  results.classList.remove('hidden');
+}
+
+function addLinkedNote(id, title, type){
+  S.modal.linked.push({id, title, type});
+  renderLinkedChips();
+  document.getElementById('link-search').value = '';
+  document.getElementById('link-results').classList.add('hidden');
+}
+
+function removeLinked(i){
+  S.modal.linked.splice(i,1);
+  renderLinkedChips();
+}
+
+function renderLinkedChips(){
+  document.getElementById('linked-chips').innerHTML = S.modal.linked.map((l,i)=>
+    `<div class="linked-pill"><div class="link-type-dot" style="background:${TYPE_COLOR[l.type]}"></div>${TYPE_ICON[l.type]} ${esc(l.title)}<button onclick="removeLinked(${i})">×</button></div>`
+  ).join('');
+}
+
+// ─── Attachments ─────────────────────────────────────────────────
+function showUrlInput(){
+  const row = document.getElementById('url-input-row');
+  row.classList.toggle('hidden');
+  if(!row.classList.contains('hidden')) document.getElementById('url-input').focus();
+}
+
+async function addUrl(){
+  const input = document.getElementById('url-input');
+  const url = input.value.trim();
+  if(!url) return;
+  input.value = '';
+  document.getElementById('url-input-row').classList.add('hidden');
+  toast('링크 정보 가져오는 중...', 1500);
+  try{
+    const meta = await api('POST','/api/url-meta',{url});
+    S.modal.attachments.push({isNew:true, attach_type:'url', value:url, thumbnail:meta.thumbnail||'', title:meta.title||url});
+    renderAttachList();
+  } catch(e){
+    S.modal.attachments.push({isNew:true, attach_type:'url', value:url, thumbnail:'', title:url});
+    renderAttachList();
+  }
+}
+
+function handleImageSelect(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    S.modal.attachments.push({isNew:true, attach_type:'image', value:'', thumbnail:e.target.result, title:file.name, file});
+    renderAttachList();
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function removeAttach(i){
+  const a = S.modal.attachments[i];
+  if(!a.isNew && a.id) S.modal.removedIds.push(a.id);
+  S.modal.attachments.splice(i,1);
+  renderAttachList();
+}
+
+function renderAttachList(){
+  const list = document.getElementById('attach-list');
+  list.innerHTML = S.modal.attachments.map((a,i)=>{
+    const thumb = (a.thumbnail)
+      ? `<img class="attach-item-thumb" src="${esc(a.thumbnail)}" onerror="this.style.display='none'">`
+      : `<div class="attach-item-thumb-placeholder">${a.attach_type==='image'?'🖼':'🔗'}</div>`;
+    return `<div class="attach-item">
+      ${thumb}
+      <div class="attach-item-info">
+        <div class="attach-item-title">${esc(a.title||a.value)}</div>
+        <div class="attach-item-url">${esc(a.value||'로컬 파일')}</div>
+      </div>
+      <button class="attach-remove" onclick="removeAttach(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ─── Save / Delete ───────────────────────────────────────────────
+async function saveNote(){
+  const title = document.getElementById('m-title').value.trim();
+  if(!title){ toast('제목을 입력해주세요'); return; }
+  const m = S.modal;
+  const body = {
+    type: m.type,
+    title,
+    content: document.getElementById('m-content').value,
+    urgency: m.urgency,
+    topic: document.getElementById('m-topic').value.trim(),
+    source_tag: document.getElementById('m-source').value.trim(),
+    tags: m.tags,
+    linked_notes: m.linked.map(l=>l.id)
+  };
+
+  let noteId = m.editing;
+  if(noteId){
+    await api('PUT',`/api/notes/${noteId}`,body);
+  } else {
+    const res = await api('POST','/api/notes',body);
+    noteId = res.id;
+  }
+
+  // Delete removed attachments
+  for(const aid of m.removedIds){
+    await api('DELETE',`/api/attachments/${aid}`);
+  }
+
+  // Upload new attachments
+  for(const a of m.attachments.filter(x=>x.isNew)){
+    if(a.attach_type==='image' && a.file){
+      const fd = new FormData();
+      fd.append('note_id', noteId);
+      fd.append('file', a.file);
+      await fetch('/api/attachments',{method:'POST',body:fd});
+    } else if(a.attach_type==='url'){
+      await api('POST','/api/attachments',{note_id:noteId, url:a.value});
+    }
+  }
+
+  closeModal();
+  await loadNotes();
+  await loadTags();
+  toast(m.editing?'수정 완료!':'저장 완료!');
+}
+
+async function deleteCurrentNote(){
+  if(!confirm('이 노트를 삭제할까요?')) return;
+  await api('DELETE',`/api/notes/${S.modal.editing}`);
+  closeModal();
+  await loadNotes();
+  toast('삭제되었습니다');
+}
+
+// ─── Graph ───────────────────────────────────────────────────────
+const NODE_CFG = {
+  todo: {color:{background:'#00c9b1',border:'#009985',highlight:{background:'#00e5cc',border:'#00c9b1'}}, shape:'dot', size:14},
+  wiki: {color:{background:'#4d9fff',border:'#2277dd',highlight:{background:'#70b8ff',border:'#4d9fff'}}, shape:'dot', size:14},
+  idea: {color:{background:'#ffd166',border:'#ccaa33',highlight:{background:'#ffe08a',border:'#ffd166'}}, shape:'dot', size:14},
+  tag:  {color:{background:'#a29bfe',border:'#7069cc',highlight:{background:'#c0bbff',border:'#a29bfe'}}, shape:'diamond', size:12}
+};
+const DIM = {color:{background:'#1e1e35',border:'#2a2a4a'},font:{color:'#444466'},opacity:0.3};
+
+async function loadGraph(){
+  const data = await api('GET','/api/graph');
+  S.graph.data = data;
+  buildNetwork(data);
+}
+
+function buildNetwork(data){
+  const container = document.getElementById('graph-network');
+  const filters = getGraphFilters();
+
+  const visNodes = data.nodes
+    .filter(n=> filters[n.group] !== false)
+    .map(n=>{
+      const cfg = NODE_CFG[n.group] || NODE_CFG.todo;
+      return {
+        id: n.id,
+        label: n.label,
+        title: n.fullTitle || n.label,
+        ...cfg,
+        font: {color:'#dde0f5', size:12},
+        _group: n.group,
+        _done: n.done
+      };
+    });
+
+  const visNodeIds = new Set(visNodes.map(n=>n.id));
+  const visEdges = data.edges
+    .filter(e=> visNodeIds.has(e.from) && visNodeIds.has(e.to))
+    .map(e=>({
+      id: e.id,
+      from: e.from,
+      to: e.to,
+      color: e.etype==='link' ? {color:'rgba(255,255,255,.5)'} : {color:'rgba(162,155,254,.35)'},
+      width: e.etype==='link' ? 2.5 : 1.2,
+      dashes: e.etype==='tag',
+      _etype: e.etype
+    }));
+
+  const nodesDS = new vis.DataSet(visNodes);
+  const edgesDS = new vis.DataSet(visEdges);
+
+  const options = {
+    physics:{
+      forceAtlas2Based:{gravitationalConstant:-40,centralGravity:0.005,springLength:180,springConstant:0.1},
+      solver:'forceAtlas2Based',
+      maxVelocity:120,
+      stabilization:{iterations:200}
+    },
+    interaction:{hover:true,tooltipDelay:100,multiselect:false},
+    edges:{smooth:{type:'continuous'}}
+  };
+
+  if(S.graph.network) S.graph.network.destroy();
+  S.graph.network = new vis.Network(container, {nodes:nodesDS, edges:edgesDS}, options);
+  S.graph.network._nodesDS = nodesDS;
+  S.graph.network._edgesDS = edgesDS;
+  S.graph.clickCount = {};
+  S.graph.lastClickedId = null;
+
+  S.graph.network.on('click', params=>{
+    if(params.nodes.length>0){
+      handleGraphClick(params.nodes[0]);
+    } else {
+      clearGraphHighlight();
+      document.getElementById('node-info-wrap').classList.add('hidden');
+    }
+  });
+}
+
+function getGraphFilters(){
+  return {
+    todo: document.getElementById('f-todo').checked,
+    wiki: document.getElementById('f-wiki').checked,
+    idea: document.getElementById('f-idea').checked,
+    tag:  document.getElementById('f-tag').checked
+  };
+}
+
+function updateGraphFilters(){
+  if(S.graph.data) buildNetwork(S.graph.data);
+}
+
+function handleGraphClick(nodeId){
+  const net = S.graph.network;
+  const data = S.graph.data;
+  const allNodes = net._nodesDS.get();
+  const allEdges = net._edgesDS.get();
+  const clickedNode = allNodes.find(n=>n.id===nodeId);
+  if(!clickedNode) return;
+
+  // Show node info
+  const srcNode = data.nodes.find(n=>n.id===nodeId);
+  if(srcNode){
+    const srcNote = S.notes.find(n=>n.id===nodeId);
+    let infoHtml = `<div class="ni-type">${srcNode.group}</div><div class="ni-title">${esc(srcNode.fullTitle||srcNode.label)}</div>`;
+    if(srcNote){
+      if(srcNote.topic) infoHtml += `<div>📁 ${esc(srcNote.topic)}</div>`;
+      if(srcNote.tags.length) infoHtml += `<div>${srcNote.tags.map(t=>`<span class="tag-chip">${esc(t.name)}</span>`).join('')}</div>`;
+    }
+    document.getElementById('node-info').innerHTML = infoHtml;
+    document.getElementById('node-info-wrap').classList.remove('hidden');
+  }
+
+  // Click logic
+  const isTag = clickedNode._group === 'tag';
+  const cnt = (S.graph.clickCount[nodeId] || 0);
+
+  if(isTag || cnt === 0){
+    // Highlight: node + connected tags
+    const connectedEdges = allEdges.filter(e=>e.from===nodeId||e.to===nodeId);
+    const connectedIds = new Set([nodeId]);
+    connectedEdges.forEach(e=>{ connectedIds.add(e.from); connectedIds.add(e.to); });
+    highlightGraph(connectedIds, new Set(connectedEdges.map(e=>e.id)), allNodes, allEdges);
+    S.graph.clickCount[nodeId] = isTag ? 0 : 1;
+  } else if(cnt === 1){
+    // Highlight: note + connected notes (via link edges)
+    const connectedEdges = allEdges.filter(e=>(e.from===nodeId||e.to===nodeId) && e._etype==='link');
+    const connectedIds = new Set([nodeId]);
+    connectedEdges.forEach(e=>{ connectedIds.add(e.from); connectedIds.add(e.to); });
+    // Also include tag-connected notes that share same tags
+    const tagEdges = allEdges.filter(e=>(e.from===nodeId||e.to===nodeId) && e._etype==='tag');
+    const myTagIds = tagEdges.map(e=>e.from===nodeId?e.to:e.from);
+    myTagIds.forEach(tagId=>{
+      const siblingEdges = allEdges.filter(e=>(e.from===tagId||e.to===tagId) && e._etype==='tag');
+      siblingEdges.forEach(e=>{ connectedIds.add(e.from); connectedIds.add(e.to); });
+    });
+    const relEdges = allEdges.filter(e=>connectedIds.has(e.from)&&connectedIds.has(e.to));
+    highlightGraph(connectedIds, new Set(relEdges.map(e=>e.id)), allNodes, allEdges);
+    S.graph.clickCount[nodeId] = 2;
+  } else {
+    clearGraphHighlight();
+    S.graph.clickCount[nodeId] = 0;
+  }
+  S.graph.lastClickedId = nodeId;
+}
+
+function highlightGraph(highlightNodeIds, highlightEdgeIds, allNodes, allEdges){
+  const net = S.graph.network;
+  const nodeUpdates = allNodes.map(n=>({
+    id: n.id,
+    color: highlightNodeIds.has(n.id) ? NODE_CFG[n._group||'todo'].color : {background:'#1a1a30',border:'#2a2a45'},
+    font: {color: highlightNodeIds.has(n.id) ? '#dde0f5' : '#2a2a45'},
+    opacity: highlightNodeIds.has(n.id) ? 1 : 0.2
+  }));
+  const edgeUpdates = allEdges.map(e=>({
+    id: e.id,
+    color: highlightEdgeIds.has(e.id) ? (e._etype==='link'?{color:'rgba(255,255,255,.8)'}:{color:'rgba(162,155,254,.7)'}) : {color:'rgba(255,255,255,.05)'},
+    width: highlightEdgeIds.has(e.id) ? (e._etype==='link'?2.5:1.2) : 0.5
+  }));
+  net._nodesDS.update(nodeUpdates);
+  net._edgesDS.update(edgeUpdates);
+}
+
+function clearGraphHighlight(){
+  const net = S.graph.network;
+  if(!net) return;
+  const allNodes = net._nodesDS.get();
+  const allEdges = net._edgesDS.get();
+  net._nodesDS.update(allNodes.map(n=>({
+    id:n.id,
+    color: NODE_CFG[n._group||'todo'].color,
+    font:{color:'#dde0f5'},
+    opacity:1
+  })));
+  net._edgesDS.update(allEdges.map(e=>({
+    id:e.id,
+    color: e._etype==='link'?{color:'rgba(255,255,255,.5)'}:{color:'rgba(162,155,254,.35)'},
+    width: e._etype==='link'?2.5:1.2
+  })));
+  S.graph.clickCount = {};
+}
+
+// ─── Start ───────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
