@@ -41,6 +41,16 @@ python3 app.py
 
 - Python 3.9+
 - flask, requests, beautifulsoup4
+```
+Note For Everything/ 
+├── app.py — Flask 백엔드 + REST API <
+├── templates/ 
+│ └── index.html — 프론트엔드 전체 (HTML+CSS+JS) 
+├── data/ 
+│ ├── brain.db — SQLite DB (런타임 생성) 
+│ └── uploads/ — 이미지 저장소 
+└── run.sh — 실행 스크립트 
+```
 
 ## 데이터 저장 위치
 - `data/brain.db` (SQLite), `data/uploads/` (이미지)
