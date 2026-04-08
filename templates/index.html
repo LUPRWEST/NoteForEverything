@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧠 Second Brain</title>
+<title>🧠 Note For Everything</title>
 <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -216,7 +216,7 @@ header{height:56px;background:var(--panel);border-bottom:1px solid var(--border)
 <body>
 
 <header>
-  <div class="logo">🧠 Second Brain <span>로컬 앱</span></div>
+  <div class="logo">🧠 Note For Everything</div>
   <div class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('board')">📋 보드</button>
     <button class="tab-btn" onclick="switchTab('graph')">🕸 시각화</button>
@@ -273,7 +273,7 @@ header{height:56px;background:var(--panel);border-bottom:1px solid var(--border)
     <div class="col-head">
       <div class="col-title">
         <div class="col-dot" style="background:var(--idea)"></div>
-        <h2>아이디어/기록</h2>
+        <h2>생각</h2>
         <span class="col-count" id="count-idea">0</span>
         <button class="add-btn" onclick="openModal('idea')">＋</button>
       </div>
@@ -299,8 +299,8 @@ header{height:56px;background:var(--panel);border-bottom:1px solid var(--border)
         <div class="filter-group" style="margin-top:10px">
           <label class="filter-item"><input type="checkbox" id="f-todo" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--todo)"></div>할 일</label>
           <label class="filter-item"><input type="checkbox" id="f-wiki" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--wiki)"></div>위키</label>
-          <label class="filter-item"><input type="checkbox" id="f-idea" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--idea)"></div>아이디어</label>
-          <label class="filter-item"><input type="checkbox" id="f-tag" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--tag)"></div>태그 노드</label>
+          <label class="filter-item"><input type="checkbox" id="f-idea" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--idea)"></div>생각</label>
+          <label class="filter-item"><input type="checkbox" id="f-tag" checked onchange="updateGraphFilters()"><div class="filter-dot" style="background:var(--tag)"></div>태그</label>
         </div>
       </div>
       <div>
@@ -308,9 +308,9 @@ header{height:56px;background:var(--panel);border-bottom:1px solid var(--border)
         <div class="legend" style="margin-top:10px">
           <div class="legend-item"><div class="legend-dot" style="background:var(--todo)"></div>할 일</div>
           <div class="legend-item"><div class="legend-dot" style="background:var(--wiki)"></div>위키</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--idea)"></div>아이디어</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--tag)"></div>태그 (2개+ 공유)</div>
-          <div class="legend-item"><div style="width:24px;height:2px;background:rgba(162,155,254,.5)"></div>태그 연결</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--idea)"></div>생각</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--tag)"></div>태그</div>
+          <div class="legend-item"><div style="width:24px;height:2px;background:rgba(162,155,254,.5)"></div>태그 링크</div>
           <div class="legend-item"><div style="width:24px;height:3px;background:#fff;opacity:.7"></div>노트 링크</div>
         </div>
       </div>
@@ -343,7 +343,7 @@ header{height:56px;background:var(--panel);border-bottom:1px solid var(--border)
       <div class="type-selector" id="type-selector">
         <button class="type-btn" data-t="todo" onclick="setModalType('todo')">📋 할 일</button>
         <button class="type-btn" data-t="wiki" onclick="setModalType('wiki')">📚 위키</button>
-        <button class="type-btn" data-t="idea" onclick="setModalType('idea')">💡 아이디어</button>
+        <button class="type-btn" data-t="idea" onclick="setModalType('idea')">💡 생각</button>
       </div>
       <div class="form-group">
         <div class="form-label">제목 *</div>
