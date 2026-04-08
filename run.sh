@@ -1,6 +1,6 @@
 #!/bin/bash
 cd "$(dirname "$0")"
-echo "🧠 Second Brain 시작 중..."
+echo "🧠 Note For Everything 시작 중..."
 echo ""
 
 # Check Python
